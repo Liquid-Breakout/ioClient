@@ -39,10 +39,13 @@ function connect() {
                 // sync using data.startUtcTime
             } else if (receivedData.status == "died") {
                 // fade music and stop
-            } else if (receivedData.status == "spectating") {
+            }
+            // The problem with having this is that
+            // We could end up reaching Roblox's HTTP requests limit
+            /*else if (receivedData.status == "spectating") {
                 // play music at time pos
                 // sync using data.startUtcTime
-            }
+            }*/
         }
     };
     
