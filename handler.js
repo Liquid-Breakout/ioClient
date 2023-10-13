@@ -2,10 +2,19 @@ const SERVER_SOCKET_ENDPOINT = "liquid-breakout-bot.onrender.com/socket";
 
 let connected = false;
 
-const userBoxTitle = document.getElementById("userBoxTitle");
+const usernameInputDiv = document.getElementById("usernameInput");
 const usernameField = document.getElementById("username");
-const infoText = document.getElementById("info");
 const connectButton = document.getElementById("connect");
+
+const connectInfoDiv = document.getElementById("connectInfo");
+const infoText = document.getElementById("info");
+const bgmInfoText = document.getElementById("bgmInfo");
+
+const volumeInfoText = document.getElementById("volumeInfo");
+const volumeRangeSlider = document.getElementById("volumeRange");
+
+const playingAudio = new Audio();
+let audioStartUtcTime = undefined;
 
 function data(socketMessage) {
     let returnedData = undefined;
@@ -15,10 +24,32 @@ function data(socketMessage) {
     return returnedData
 }
 
+function formatSeconds(seconds) {
+    var date = new Date(0);
+    date.setSeconds(seconds);
+    return date.toISOString().substring(11, 19);
+}
+
 function setConnectGroupVisibility(value) {
-    usernameField.style.display = value == true ? undefined : "none";
-    connectButton.style.display = value == true ? undefined : "none";
-    infoText.style.display = value == true ? "none" : undefined;
+    usernameInputDiv.hidden = !value;
+    connectInfoDiv.hidden = value;
+}
+
+function getSelectedRadioValueByTag(tagName) {
+    const elements = document.getElementsByTagName(tagName);
+    for (i = 0; i < elements.length; i++) {
+        if (elements[i].type = "radio") {
+            if (elements[i].checked) {
+                return elements[i].value;
+            }
+        }
+    }
+}
+
+function playMusic(url, startUtcTime) {
+    audioStartUtcTime = startUtcTime;
+    playingAudio.src = url;
+    playingAudio.play();
 }
 
 function connect() {
@@ -50,10 +81,12 @@ function connect() {
         if (receivedData.type == "connectSuccess") {
             connected = true;
             infoText.innerHTML = `Connected to IO with user: ${usernameField.value}`;
+            playMusic("https://github.com/NumPix/pygame-touhou/raw/main/assets/music/09.-Locked-Girl-_-The-Girl_s-Secret-Room.wav");
         } else {
             if (receivedData.status == "ingame") {
                 // play music with data.bgm
                 // sync using data.startUtcTime
+                playMusic(receivedData.bgm, receivedData.startUtcTime);
             } else if (receivedData.status == "died") {
                 // fade music and stop
             }
@@ -69,14 +102,33 @@ function connect() {
     socketConnection.onclose = function() {
         // Disconnected, will attempt to re-establish if the option is there
         connected = false;
-        userBoxTitle.innerHTML = "Enter Username:"
+        infoText.innerHTML = "Disconnected...";
         setConnectGroupVisibility(true);
     };
 }
 
-document.getElementById("connect").addEventListener("click", () => {
+playingAudio.addEventListener("canplay", () => {
+    if (audioStartUtcTime == undefined) {
+        return;
+    }
+    playingAudio.currentTime = (new Date().getUTCSeconds() - audioStartUtcTime) * 10 / 1000;
+});
+
+playingAudio.addEventListener("timeupdate", () => {
+    bgmInfoText.innerHTML = `Playing; ${formatSeconds(playingAudio.currentTime)}/${formatSeconds(playingAudio.duration)}`;
+    console.log("hi");
+});
+
+connectButton.addEventListener("click", () => {
     setConnectGroupVisibility(false);
-    userBoxTitle.innerHTML = "IO:"
     infoText.innerHTML = "Connecting...";
+    bgmInfoText.innerHTML = "Standby...";
     connect();
-})
+});
+
+volumeRangeSlider.addEventListener("input", () => {
+    volumeInfoText.innerHTML = `Volume: ${volumeRangeSlider.value}%`
+    playingAudio.volume = volumeRangeSlider.value / 100;
+});
+
+volumeInfoText.innerHTML = `Volume: ${volumeRangeSlider.value}%`;
