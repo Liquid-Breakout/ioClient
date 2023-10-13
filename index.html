@@ -1,11 +1,60 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Liquid Breakout's IO'</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        * {
+            font-family: Arial, Helvetica, sans-serif;
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-size: 110%;
+        }
+
+       form {
+            display: block;
+            margin: 1em;
+       }
+
+       #volume, #username {
+            width: 60vw;
+            height: 25px;
+       }
+       #info {
+            width: 60vw;
+            height: 25px;
+       }
+    </style>
 </head>
 <body>
-
-<h1>Hello world!</h1>
-
+    <form>
+        <label for="username" id="userBoxTitle">Enter Username:</label>
+        <label for="info" id="info"></label>
+        <input type="text" id="username">
+        <input type="button" id="connect" value="Connect">
+    </form>
+    <form>
+        <label for="volume">Volume:</label>
+        <input type="range" min="1" max="100" value="70" id="volume">
+    </form>
+    <form>
+        <label>On Death:</label><br>
+        <input type="radio" name="death_radio" id="quieten_bgm_ondeath">
+        <label for="quieten">Quieten BGM</label>
+        <input type="radio" name="death_radio" id="stop_bgm_ondeath">
+        <label for="stop">Stop BGM</label>
+        <input type="radio" name="death_radio" id="disable_bgm_ondeath">
+        <label for="stop">Disable</label>
+    </form>
+    <form>
+        <label>Leaving Game:</label><br>
+        <input type="radio" name="leave_radio" id="stop_bgm_onleaving">
+        <label for="quieten">Stop BGM</label>
+        <input type="radio" name="leave_radio" id="disable_bgm_onleaving">
+        <label for="stop">Disable</label>
+    </form>
+    <script src="handler.js"></script>
 </body>
 </html>

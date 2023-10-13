@@ -1,6 +1,11 @@
-const SERVER_SOCKET_ENDPOINT = "https://liquid-breakout-bot.onrender.com/socket";
+const SERVER_SOCKET_ENDPOINT = "liquid-breakout-bot.onrender.com/socket";
 
 let connected = false;
+
+const userBoxTitle = document.getElementById("userBoxTitle");
+const usernameField = document.getElementById("username");
+const infoText = document.getElementById("info");
+const connectButton = document.getElementById("connect");
 
 function data(socketMessage) {
     let returnedData = undefined;
@@ -10,15 +15,26 @@ function data(socketMessage) {
     return returnedData
 }
 
+function setConnectGroupVisibility(value) {
+    usernameField.style.display = value == true ? undefined : "none";
+    connectButton.style.display = value == true ? undefined : "none";
+    infoText.style.display = value == true ? "none" : undefined;
+}
+
 function connect() {
     if (connected) {
         return;
     }
+    console.log(usernameField.value)
 
-    const socketConnection = new WebSocket(`${SERVER_SOCKET_ENDPOINT}/websocket`);
+    const socketConnection = new WebSocket(`wss://${SERVER_SOCKET_ENDPOINT}/websocket`);
     socketConnection.onopen = function() {
         // Connect to io socket
-        socketConnection.send(JSON.stringify({type: "connect", connectionType: "io"}));
+        socketConnection.send(JSON.stringify({
+            type: "connect",
+            connectionType: "io",
+            username: usernameField.value
+        }));
     }
     
     socketConnection.onmessage = function(e) {
@@ -33,6 +49,7 @@ function connect() {
         
         if (receivedData.type == "connectSuccess") {
             connected = true;
+            infoText.innerHTML = `Connected to IO with user: ${usernameField.value}`;
         } else {
             if (receivedData.status == "ingame") {
                 // play music with data.bgm
@@ -52,5 +69,14 @@ function connect() {
     socketConnection.onclose = function() {
         // Disconnected, will attempt to re-establish if the option is there
         connected = false;
+        userBoxTitle.innerHTML = "Enter Username:"
+        setConnectGroupVisibility(true);
     };
 }
+
+document.getElementById("connect").addEventListener("click", () => {
+    setConnectGroupVisibility(false);
+    userBoxTitle.innerHTML = "IO:"
+    infoText.innerHTML = "Connecting...";
+    connect();
+})
