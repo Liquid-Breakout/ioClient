@@ -116,8 +116,11 @@ playingAudio.addEventListener("canplay", () => {
 
 playingAudio.addEventListener("timeupdate", () => {
     bgmInfoText.innerHTML = `Playing; ${formatSeconds(playingAudio.currentTime)}/${formatSeconds(playingAudio.duration)}`;
-    console.log("hi");
 });
+
+playingAudio.addEventListener("ended", () => {
+    bgmInfoText.innerHTML = "Playback Finished";
+})
 
 connectButton.addEventListener("click", () => {
     setConnectGroupVisibility(false);
