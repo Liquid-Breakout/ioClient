@@ -8,6 +8,7 @@ const connectButton = document.getElementById("connect");
 
 const connectInfoDiv = document.getElementById("connectInfo");
 const infoText = document.getElementById("info");
+const reconnectButton = document.getElementById("reconnect");
 const bgmInfoText = document.getElementById("bgmInfo");
 
 const volumeInfoText = document.getElementById("volumeInfo");
@@ -15,6 +16,7 @@ const volumeRangeSlider = document.getElementById("volumeRange");
 
 const playingAudio = new Audio();
 let audioStartUtcTime = undefined;
+let audioVolumeMultiplier = 1;
 
 function data(socketMessage) {
     let returnedData = undefined;
@@ -24,7 +26,18 @@ function data(socketMessage) {
     return returnedData
 }
 
+function lerp(a, b, t) {
+    return a + (b - a) * t;
+}
+
+function fixToFinite(n) {
+    return parseFloat(n).toPrecision(12);
+}
+
 function formatSeconds(seconds) {
+    if (isNaN(seconds) || seconds == Infinity) {
+        return "??:??:??";
+    }
     var date = new Date(0);
     date.setSeconds(seconds);
     return date.toISOString().substring(11, 19);
@@ -47,28 +60,54 @@ function getSelectedRadioValueByTag(tagName) {
 }
 
 function playMusic(url, startUtcTime) {
+    audioVolumeMultiplier = 1;
     audioStartUtcTime = startUtcTime;
     playingAudio.src = url;
     playingAudio.play();
+}
+
+function fadeMusic(time, volumeMultiplier) {
+    const originalMultiplier = audioVolumeMultiplier;
+    const interval = 20;
+
+    const delta = volumeMultiplier - originalMultiplier;
+    const ticks = Math.floor(time * 1000 / interval);
+    let tick = 1;
+
+    const fadeInterval = setInterval(() => {
+        audioVolumeMultiplier = originalMultiplier + tick / ticks * delta;
+
+        if (++tick === ticks + 1) {
+            clearInterval(fadeInterval);
+        }
+    }, interval);
+}
+
+function stopMusic() {
+    playingAudio.pause();
+    playingAudio.currentTime = playingAudio.duration;
 }
 
 function connect() {
     if (connected) {
         return;
     }
-    console.log(usernameField.value)
+    setConnectGroupVisibility(false);
+    reconnectButton.hidden = true;
+    infoText.innerHTML = "Connecting...";
+    bgmInfoText.innerHTML = "Standby...";
 
     const socketConnection = new WebSocket(`wss://${SERVER_SOCKET_ENDPOINT}/websocket`);
-    socketConnection.onopen = function() {
+    socketConnection.addEventListener("open", () => {
         // Connect to io socket
         socketConnection.send(JSON.stringify({
             type: "connect",
             connectionType: "io",
             username: usernameField.value
         }));
-    }
+    });
     
-    socketConnection.onmessage = function(e) {
+    socketConnection.addEventListener("message", (e) => {
         if (!e.data) {
             return;
         }
@@ -81,14 +120,18 @@ function connect() {
         if (receivedData.type == "connectSuccess") {
             connected = true;
             infoText.innerHTML = `Connected to IO with user: ${usernameField.value}`;
+            
+            // test
             playMusic("https://github.com/NumPix/pygame-touhou/raw/main/assets/music/09.-Locked-Girl-_-The-Girl_s-Secret-Room.wav");
+            fadeMusic(10, 0);
         } else {
             if (receivedData.status == "ingame") {
                 // play music with data.bgm
                 // sync using data.startUtcTime
                 playMusic(receivedData.bgm, receivedData.startUtcTime);
             } else if (receivedData.status == "died") {
-                // fade music and stop
+                // fade music
+                fadeMusic(1.5, .5);
             }
             // The problem with having this is that
             // We could end up reaching Roblox's HTTP requests limit
@@ -97,41 +140,50 @@ function connect() {
                 // sync using data.startUtcTime
             }*/
         }
-    };
+    });
     
-    socketConnection.onclose = function() {
-        // Disconnected, will attempt to re-establish if the option is there
+    socketConnection.addEventListener("close", () => {
+        // Disconnected
         connected = false;
-        infoText.innerHTML = "Disconnected...";
-        setConnectGroupVisibility(true);
-    };
+        stopMusic();
+        infoText.innerHTML = "Disconnected from IO.";
+        reconnectButton.hidden = false;
+    });
 }
 
 playingAudio.addEventListener("canplay", () => {
     if (audioStartUtcTime == undefined) {
         return;
     }
-    playingAudio.currentTime = (new Date().getUTCSeconds() - audioStartUtcTime) * 10 / 1000;
+    playingAudio.currentTime = fixToFinite(new Date().getUTCSeconds() - audioStartUtcTime);
 });
 
 playingAudio.addEventListener("timeupdate", () => {
-    bgmInfoText.innerHTML = `Playing; ${formatSeconds(playingAudio.currentTime)}/${formatSeconds(playingAudio.duration)}`;
+    if (isNaN(playingAudio.duration)) {
+        bgmInfoText.innerHTML = "Loading audio.";
+    } else if (playingAudio.duration === Infinity) {
+        bgmInfoText.innerHTML = "Loading audio.";
+    } else {
+        bgmInfoText.innerHTML = `Playing; ${formatSeconds(playingAudio.currentTime)}/${formatSeconds(playingAudio.duration)}`;
+    }
 });
 
 playingAudio.addEventListener("ended", () => {
     bgmInfoText.innerHTML = "Playback Finished";
 })
 
-connectButton.addEventListener("click", () => {
-    setConnectGroupVisibility(false);
-    infoText.innerHTML = "Connecting...";
-    bgmInfoText.innerHTML = "Standby...";
-    connect();
-});
+connectButton.addEventListener("click", connect);
+reconnectButton.addEventListener("click", connect);
 
 volumeRangeSlider.addEventListener("input", () => {
-    volumeInfoText.innerHTML = `Volume: ${volumeRangeSlider.value}%`
-    playingAudio.volume = volumeRangeSlider.value / 100;
+    volumeInfoText.innerHTML = `Volume: ${volumeRangeSlider.value}%`;
 });
 
 volumeInfoText.innerHTML = `Volume: ${volumeRangeSlider.value}%`;
+
+// totally intended purpose :troll:
+function step() {
+    playingAudio.volume = volumeRangeSlider.value / 100 * fixToFinite(audioVolumeMultiplier);
+    requestAnimationFrame(step);
+}
+requestAnimationFrame(step);
