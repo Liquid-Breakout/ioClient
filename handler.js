@@ -15,6 +15,7 @@ const volumeInfoText = document.getElementById("volumeInfo");
 const volumeRangeSlider = document.getElementById("volumeRange");
 
 const playingAudio = new Audio();
+playingAudio.loop = true;
 let audioStartUtcTime = undefined;
 let audioVolumeMultiplier = 1;
 
@@ -123,10 +124,6 @@ function connect() {
         if (receivedData.type == "connectSuccess") {
             connected = true;
             infoText.innerHTML = `Connected to IO with user: ${usernameField.value}`;
-            
-            // test
-            playMusic("https://github.com/NumPix/pygame-touhou/raw/main/assets/music/09.-Locked-Girl-_-The-Girl_s-Secret-Room.wav");
-            fadeMusic(10, 0);
         } else {
             if (receivedData.status == "ingame") {
                 // play music with data.bgm
