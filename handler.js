@@ -74,13 +74,16 @@ function fadeMusic(time, volumeMultiplier) {
     const ticks = Math.floor(time * 1000 / interval);
     let tick = 1;
 
-    const fadeInterval = setInterval(() => {
-        audioVolumeMultiplier = originalMultiplier + tick / ticks * delta;
-
-        if (++tick === ticks + 1) {
-            clearInterval(fadeInterval);
-        }
-    }, interval);
+    return new Promise(resolve => {
+        const fadeInterval = setInterval(() => {
+            audioVolumeMultiplier = originalMultiplier + tick / ticks * delta;
+    
+            if (++tick === ticks + 1) {
+                clearInterval(fadeInterval);
+                resolve();
+            }
+        }, interval);
+    })
 }
 
 function stopMusic() {
@@ -131,7 +134,18 @@ function connect() {
                 playMusic(receivedData.bgm, receivedData.startUtcTime);
             } else if (receivedData.status == "died") {
                 // fade music
-                fadeMusic(1.5, .5);
+                const onDeathOption = getSelectedRadioValueByTag("death_radio");
+                if (onDeathOption == "quieten") {
+                    fadeMusic(1, .5);
+                } else if (onDeathOption == "stop") {
+                    fadeMusic(1, 0).then(() => stopMusic());
+                }
+            } else if (receivedData.status == "leftGame") {
+                // fade music 2
+                const onLeaveOption = getSelectedRadioValueByTag("leave_radio");
+                if (onLeaveOption == "stop") {
+                    fadeMusic(1, 0).then(() => stopMusic());
+                }
             }
             // The problem with having this is that
             // We could end up reaching Roblox's HTTP requests limit
