@@ -89,7 +89,9 @@ function fadeMusic(time, volumeMultiplier) {
 
 function stopMusic() {
     playingAudio.pause();
-    playingAudio.currentTime = playingAudio.duration;
+    if (!isNaN(playingAudio.duration) && playingAudio.duration != Infinity) {
+        playingAudio.currentTime = playingAudio.duration;
+    }
 }
 
 function connect() {
