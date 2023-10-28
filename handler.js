@@ -55,12 +55,13 @@ function setConnectGroupVisibility(value) {
 function getSelectedRadioValueByTag(tagName) {
     const elements = document.getElementsByTagName(tagName);
     for (i = 0; i < elements.length; i++) {
-        if (elements[i].type = "radio") {
+        if (elements[i].type == "radio") {
             if (elements[i].checked) {
                 return elements[i].value;
             }
         }
     }
+    return undefined;
 }
 
 function playMusic(url, startUtcTime) {
