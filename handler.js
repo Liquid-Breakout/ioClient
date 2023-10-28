@@ -81,6 +81,7 @@ function fadeMusic(time, volumeMultiplier) {
     return new Promise(resolve => {
         const fadeInterval = setInterval(() => {
             audioVolumeMultiplier = originalMultiplier + tick / ticks * delta;
+            console.log(audioVolumeMultiplier);
     
             if (++tick === ticks + 1) {
                 clearInterval(fadeInterval);
