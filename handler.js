@@ -19,6 +19,9 @@ playingAudio.loop = true;
 let audioStartUtcTime = undefined;
 let audioVolumeMultiplier = 1;
 
+const startPlayingEvent = new Event("startPlaying");
+let audioNotLoaded = false;
+
 function data(socketMessage) {
     let returnedData = undefined;
     try {
@@ -164,7 +167,7 @@ function connect() {
     });
 }
 
-playingAudio.addEventListener("canplay", () => {
+playingAudio.addEventListener("startPlaying", () => {
     if (audioStartUtcTime == undefined) {
         return;
     }
@@ -174,9 +177,15 @@ playingAudio.addEventListener("canplay", () => {
 playingAudio.addEventListener("timeupdate", () => {
     if (isNaN(playingAudio.duration)) {
         bgmInfoText.innerHTML = "Loading audio.";
+        audioNotLoaded = false;
     } else if (playingAudio.duration === Infinity) {
         bgmInfoText.innerHTML = "Loading audio.";
+        audioNotLoaded = false;
     } else {
+        if (!audioNotLoaded) {
+            audioNotLoaded = true;
+            playingAudio.dispatchEvent(startPlayingEvent);
+        }
         bgmInfoText.innerHTML = `Playing; ${formatSeconds(playingAudio.currentTime)}/${formatSeconds(playingAudio.duration)}`;
     }
 });
