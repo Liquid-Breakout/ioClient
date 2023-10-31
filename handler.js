@@ -20,7 +20,6 @@ let audioStartUtcTime = undefined;
 let audioVolumeMultiplier = 1;
 
 const startPlayingEvent = new Event("startPlaying");
-let audioNotLoaded = false;
 
 function data(socketMessage) {
     let returnedData = undefined;
@@ -53,13 +52,9 @@ function setConnectGroupVisibility(value) {
 }
 
 function getSelectedRadioValueByTag(tagName) {
-    const elements = document.getElementsByTagName(tagName);
-    for (i = 0; i < elements.length; i++) {
-        if (elements[i].type == "radio") {
-            if (elements[i].checked) {
-                return elements[i].value;
-            }
-        }
+    const currentlySelecting = document.querySelector(`input[name="${tagName}"]:checked`);
+    if (currentlySelecting) {
+        return currentlySelecting.value;
     }
     return undefined;
 }
@@ -68,7 +63,9 @@ function playMusic(url, startUtcTime) {
     audioVolumeMultiplier = 1;
     audioStartUtcTime = startUtcTime;
     playingAudio.src = url;
-    playingAudio.play();
+    playingAudio.play()
+        .then(() => playingAudio.dispatchEvent(startPlayingEvent))
+        .catch(() => bgmInfoText.innerHTML = "No IO source.");
 }
 
 function fadeMusic(time, volumeMultiplier) {
@@ -172,21 +169,14 @@ playingAudio.addEventListener("startPlaying", () => {
     if (audioStartUtcTime == undefined) {
         return;
     }
-    playingAudio.currentTime = fixToFinite(new Date().getUTCSeconds() - audioStartUtcTime);
+    let currentStartUtcTime = new Date().getTime() / 1000;
+    playingAudio.currentTime = fixToFinite(currentStartUtcTime - audioStartUtcTime);
 });
 
 playingAudio.addEventListener("timeupdate", () => {
-    if (isNaN(playingAudio.duration)) {
+    if (isNaN(playingAudio.duration) || playingAudio.duration === Infinity) {
         bgmInfoText.innerHTML = "Loading audio.";
-        audioNotLoaded = false;
-    } else if (playingAudio.duration === Infinity) {
-        bgmInfoText.innerHTML = "Loading audio.";
-        audioNotLoaded = false;
     } else {
-        if (!audioNotLoaded) {
-            audioNotLoaded = true;
-            playingAudio.dispatchEvent(startPlayingEvent);
-        }
         bgmInfoText.innerHTML = `Playing; ${formatSeconds(playingAudio.currentTime)}/${formatSeconds(playingAudio.duration)}`;
     }
 });
