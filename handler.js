@@ -18,8 +18,10 @@ const playingAudio = new Audio();
 playingAudio.loop = true;
 let audioStartUtcTime = undefined;
 let audioVolumeMultiplier = 1;
+let audioFadeInterval = undefined;
 
 const startPlayingEvent = new Event("startPlaying");
+const webWorker = new Worker("worker.js");
 
 function data(socketMessage) {
     let returnedData = undefined;
@@ -60,7 +62,7 @@ function getSelectedRadioValueByTag(tagName) {
 }
 
 function playMusic(url, startUtcTime) {
-    audioVolumeMultiplier = 1;
+    transitionVolumeMultiplier(0, 1);
     audioStartUtcTime = startUtcTime;
     playingAudio.src = url;
     playingAudio.play()
@@ -68,7 +70,15 @@ function playMusic(url, startUtcTime) {
         .catch(() => bgmInfoText.innerHTML = "No IO source.");
 }
 
-function fadeMusic(time, volumeMultiplier) {
+function transitionVolumeMultiplier(time, volumeMultiplier) {
+    if (audioFadeInterval != undefined) {
+        clearInterval(audioFadeInterval);
+    }
+    if (time <= 0) {
+        audioVolumeMultiplier = volumeMultiplier;
+        return new Promise(resolve => resolve());
+    }
+
     const originalMultiplier = audioVolumeMultiplier;
     const interval = 20;
 
@@ -77,11 +87,14 @@ function fadeMusic(time, volumeMultiplier) {
     let tick = 1;
 
     return new Promise(resolve => {
-        const fadeInterval = setInterval(() => {
+        audioFadeInterval = setInterval(() => {
             audioVolumeMultiplier = originalMultiplier + tick / ticks * delta;
     
             if (++tick === ticks + 1) {
-                clearInterval(fadeInterval);
+                if (audioFadeInterval != undefined) {
+                    clearInterval(audioFadeInterval);
+                    audioFadeInterval = undefined;
+                }
                 resolve();
             }
         }, interval);
@@ -136,15 +149,15 @@ function connect() {
                 // fade music
                 const onDeathOption = getSelectedRadioValueByTag("death_radio");
                 if (onDeathOption == "quieten") {
-                    fadeMusic(1, .5);
+                    transitionVolumeMultiplier(1, .5);
                 } else if (onDeathOption == "stop") {
-                    fadeMusic(1, 0).then(() => stopMusic());
+                    transitionVolumeMultiplier(1, 0).then(() => stopMusic());
                 }
             } else if (receivedData.status == "leftGame") {
                 // fade music 2
                 const onLeaveOption = getSelectedRadioValueByTag("leave_radio");
                 if (onLeaveOption == "stop") {
-                    fadeMusic(1, 0).then(() => stopMusic());
+                    transitionVolumeMultiplier(1, 0).then(() => stopMusic());
                 }
             }
             // The problem with having this is that
@@ -194,9 +207,9 @@ volumeRangeSlider.addEventListener("input", () => {
 
 volumeInfoText.innerHTML = `Volume: ${volumeRangeSlider.value}%`;
 
-// totally intended purpose :troll:
-function step() {
-    playingAudio.volume = volumeRangeSlider.value / 100 * fixToFinite(audioVolumeMultiplier);
-    requestAnimationFrame(step);
-}
-requestAnimationFrame(step);
+webWorker.addEventListener("message", e => {
+    let data = e.data;
+    if (data.action == "update") {
+        playingAudio.volume = volumeRangeSlider.value / 100 * fixToFinite(audioVolumeMultiplier);
+    }
+});
